@@ -1,19 +1,27 @@
 import logging
+import os
 from datetime import datetime
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-import httpx
-
+import time
 from backend.llm_client import query_ollama
 from backend.config import OLLAMA_BASE_URL, OLLAMA_MODEL
 
+# Logging setup
+LOG_DIR = os.path.join(os.path.dirname(__file__), "logs")
+os.makedirs(LOG_DIR, exist_ok=True)
+
 logging.basicConfig(
-    filename="backend/logs/app.log",
     level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
+    format="%(asctime)s | %(levelname)-8s | %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+    handlers=[
+        logging.FileHandler(os.path.join(LOG_DIR, "app.log"), encoding="utf-8"),
+        logging.StreamHandler(),
+    ],
 )
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("student_support")
 
 app = FastAPI(
     title="University Student Support Assistant API",
@@ -66,43 +74,39 @@ def ask_question(request: QuestionRequest):
     question = request.question.strip()
 
     if not question:
-        logger.warning("Received empty question")
-        return AnswerResponse(
-            answer="Please provide a non-empty question.",
-            model=OLLAMA_MODEL,
-            timestamp=datetime.now().isoformat(),
+        logger.warning("Empty question submitted by client")
+        raise HTTPException(
+            status_code=422,
+            detail="Question cannot be empty. Please enter a question.",
         )
 
-    logger.info("Question received: %s", question)
+    logger.info(f"Question received: \"{question}\"")
+    start_time = time.time()
 
     try:
         answer = query_ollama(question)
-    except httpx.ConnectError:
-        logger.error("Cannot connect to Ollama at %s", OLLAMA_BASE_URL)
+        elapsed = round(time.time() - start_time, 2)
+        logger.info(f"Response generated ({len(answer)} chars) in {elapsed}s")
         return AnswerResponse(
-            answer="The language model service is not running. Please start Ollama and try again.",
+            answer=answer,
             model=OLLAMA_MODEL,
             timestamp=datetime.now().isoformat(),
+        )
+    except httpx.ConnectError:
+        logger.error(f"LLM connection failed: Could not connect to Ollama at {OLLAMA_BASE_URL}")
+        raise HTTPException(
+            status_code=503,
+            detail="The AI model is not reachable. Please ensure Ollama is running.",
         )
     except httpx.TimeoutException:
-        logger.error("Ollama request timed out for question: %s", question)
-        return AnswerResponse(
-            answer="The model took too long to respond. Please try again.",
-            model=OLLAMA_MODEL,
-            timestamp=datetime.now().isoformat(),
+        logger.error(f"Ollama request timed out for question: {question}")
+        raise HTTPException(
+            status_code=503,
+            detail="The model took too long to respond. Please try again later.",
         )
     except Exception as e:
-        logger.error("Unexpected error: %s", str(e))
-        return AnswerResponse(
-            answer="An unexpected error occurred. Please try again later.",
-            model=OLLAMA_MODEL,
-            timestamp=datetime.now().isoformat(),
+        logger.error(f"Unexpected error: {type(e).__name__}: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="An internal server error occurred. Check the logs for details.",
         )
-
-    logger.info("Answer generated: %s", answer[:100])
-
-    return AnswerResponse(
-        answer=answer,
-        model=OLLAMA_MODEL,
-        timestamp=datetime.now().isoformat(),
-    )

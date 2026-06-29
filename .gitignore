@@ -1,5 +1,8 @@
 venv/
+.venv/
+.testdeps/
 __pycache__/
 *.pyc
 backend/logs/*.log
 .env
+python-*.exe

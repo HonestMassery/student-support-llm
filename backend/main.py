@@ -1,6 +1,7 @@
 import logging
 import os
 from datetime import datetime
+import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel

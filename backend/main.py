@@ -5,6 +5,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import time
+import httpx
 from backend.llm_client import query_ollama
 from backend.config import OLLAMA_BASE_URL, OLLAMA_MODEL
 

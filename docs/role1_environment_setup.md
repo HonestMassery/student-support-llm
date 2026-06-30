@@ -79,9 +79,9 @@ Uvicorn is an ASGI server used to run FastAPI applications.
 
 Requests is a Python library that allows the application to send HTTP requests to APIs and external services.
 
-#### Streamlit
+#### Gradio
 
-Streamlit is a Python framework used to build simple web-based user interfaces.
+Gradio is a Python framework used to build simple web-based user interfaces. In this project, the UI is implemented with Gradio in `frontend/app.py`.
 
 #### Ollama
 

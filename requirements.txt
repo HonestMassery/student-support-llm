@@ -1,7 +1,9 @@
 fastapi
 uvicorn
 requests
-streamlit
+gradio
 ollama
 python-dotenv
+httpx
+pytest
 httpx
